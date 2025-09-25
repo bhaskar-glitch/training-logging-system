@@ -198,34 +198,43 @@ async function handleCheckIn(req, res) {
 
 // Main handler
 module.exports = async function handler(req, res) {
+  console.log('API Request:', req.method, req.url);
+  
   setCorsHeaders(res);
 
   if (handlePreflight(req, res)) {
     return;
   }
 
-  const { pathname, searchParams } = new URL(req.url, `http://${req.headers.host}`);
-  const path = pathname.replace('/api/', '');
+  // Parse the path from the URL - simpler approach for Vercel
+  const path = req.url.replace('/api/', '').split('?')[0];
+  console.log('Parsed path:', path);
 
   try {
     switch (path) {
       case 'login':
+        console.log('Handling login request');
         return await handleLogin(req, res);
       
       case 'training-sessions':
+        console.log('Handling training-sessions request');
         return await handleGetSessions(req, res);
       
       case 'training-session':
+        console.log('Handling training-session request');
         return await handleCreateSession(req, res);
       
       case 'attendance/session':
+        console.log('Handling attendance/session request');
         return await handleGetAttendance(req, res);
       
       case 'attendance/checkin':
+        console.log('Handling attendance/checkin request');
         authenticateToken(req, res, () => handleCheckIn(req, res));
         break;
       
       default:
+        console.log('Unknown endpoint:', path);
         res.status(404).json({ error: 'API endpoint not found' });
     }
   } catch (error) {
