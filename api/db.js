@@ -5,10 +5,16 @@ let db = null;
 
 function getDatabase() {
   if (!db) {
-    // For Vercel, we'll use an in-memory database or a file-based one
+    // For Vercel, use in-memory database since file system is read-only
     // In production, you might want to use a cloud database like PlanetScale or Supabase
-    const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), 'database', 'attendance.db');
-    db = new sqlite3.Database(dbPath);
+    if (process.env.NODE_ENV === 'production') {
+      // Use in-memory database for Vercel
+      db = new sqlite3.Database(':memory:');
+    } else {
+      // Use file database for local development
+      const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), 'database', 'attendance.db');
+      db = new sqlite3.Database(dbPath);
+    }
     
     // Initialize database tables
     initializeDatabase();

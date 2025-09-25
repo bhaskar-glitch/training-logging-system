@@ -23,23 +23,33 @@ function handlePreflight(req, res) {
 
 // Login endpoint
 async function handleLogin(req, res) {
+  console.log('Login request received:', req.method, req.body);
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { username, password } = req.body;
+    console.log('Login attempt for user:', username);
+    
     const db = getDatabase();
+    console.log('Database initialized');
 
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
       if (err) {
+        console.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
 
+      console.log('User found:', user ? 'Yes' : 'No');
+      
       if (!user || !bcrypt.compareSync(password, user.password)) {
+        console.log('Invalid credentials');
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      console.log('Login successful for user:', user.username);
       const token = generateToken({ id: user.id, role: user.role });
       res.json({ 
         token, 
@@ -53,6 +63,7 @@ async function handleLogin(req, res) {
       });
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 }
