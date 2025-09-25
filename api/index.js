@@ -34,37 +34,49 @@ async function handleLogin(req, res) {
     console.log('Login attempt for user:', username);
     
     const db = getDatabase();
-    console.log('Database initialized');
+    console.log('Database connection established');
 
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
+    // Wait a moment for database initialization to complete
+    setTimeout(() => {
+      db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error: ' + err.message });
+        }
 
-      console.log('User found:', user ? 'Yes' : 'No');
-      
-      if (!user || !bcrypt.compareSync(password, user.password)) {
-        console.log('Invalid credentials');
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+        console.log('User found:', user ? 'Yes' : 'No');
+        
+        if (!user) {
+          console.log('User not found');
+          return res.status(401).json({ error: 'Invalid credentials' });
+        }
 
-      console.log('Login successful for user:', user.username);
-      const token = generateToken({ id: user.id, role: user.role });
-      res.json({ 
-        token, 
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          role: user.role, 
-          full_name: user.full_name,
-          job_title: user.job_title 
-        } 
+        const passwordMatch = bcrypt.compareSync(password, user.password);
+        console.log('Password match:', passwordMatch);
+        
+        if (!passwordMatch) {
+          console.log('Invalid password');
+          return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        console.log('Login successful for user:', user.username);
+        const token = generateToken({ id: user.id, role: user.role });
+        res.json({ 
+          token, 
+          user: { 
+            id: user.id, 
+            username: user.username, 
+            role: user.role, 
+            full_name: user.full_name,
+            job_title: user.job_title 
+          } 
+        });
       });
-    });
+    }, 100); // Small delay to ensure database is ready
+    
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
 
