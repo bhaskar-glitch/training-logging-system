@@ -228,13 +228,22 @@ async function handleCheckIn(req, res) {
 
   try {
     const { comments, sessionId } = req.body;
+    console.log('Check-in request body:', { comments, sessionId });
+    console.log('User from token:', req.user);
+    
+    if (!req.user || !req.user.id) {
+      console.error('No user found in request');
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
     const db = getDatabase();
 
     // Check if already checked in
     db.get('SELECT id FROM attendance WHERE session_id = ? AND student_id = ?', 
            [sessionId, req.user.id], (err, existing) => {
       if (err) {
-        return res.status(500).json({ error: 'Database error' });
+        console.error('Database error checking existing attendance:', err);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
       }
 
       if (existing) {
@@ -244,19 +253,36 @@ async function handleCheckIn(req, res) {
       // Get user details
       db.get('SELECT full_name, job_title FROM users WHERE id = ?', [req.user.id], (err, user) => {
         if (err) {
-          return res.status(500).json({ error: 'Database error' });
+          console.error('Database error getting user details:', err);
+          return res.status(500).json({ error: 'Database error: ' + err.message });
+        }
+
+        if (!user) {
+          console.error('User not found in database:', req.user.id);
+          return res.status(404).json({ error: 'User not found' });
         }
 
         const checkInTime = moment().format('YYYY-MM-DD HH:mm:ss');
         const signature = user.full_name; // Use full name as signature
+
+        console.log('Inserting attendance record:', {
+          sessionId,
+          studentId: req.user.id,
+          checkInTime,
+          signature,
+          jobTitle: user.job_title,
+          comments
+        });
 
         db.run(
           'INSERT INTO attendance (session_id, student_id, check_in_time, signature, job_title, comments) VALUES (?, ?, ?, ?, ?, ?)',
           [sessionId, req.user.id, checkInTime, signature, user.job_title, comments],
           function(err) {
             if (err) {
-              return res.status(500).json({ error: 'Database error' });
+              console.error('Database error inserting attendance:', err);
+              return res.status(500).json({ error: 'Database error: ' + err.message });
             }
+            console.log('Attendance record created with ID:', this.lastID);
             res.json({ message: 'Check-in successful', attendance_id: this.lastID });
           }
         );

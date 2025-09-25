@@ -912,7 +912,10 @@ async function checkIn() {
     try {
         await apiCall('/api/attendance/checkin', {
             method: 'POST',
-            body: JSON.stringify({ comments: comments })
+            body: JSON.stringify({ 
+                comments: comments,
+                sessionId: currentSession.id 
+            })
         });
         
         showSuccess('studentMessage', 'Check-in successful!');
