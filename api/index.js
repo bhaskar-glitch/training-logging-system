@@ -132,7 +132,25 @@ async function handleCreateSession(req, res) {
       session_start_time 
     } = req.body;
 
+    console.log('Creating session with data:', req.body);
     const db = getDatabase();
+    
+    // Wait for database to be ready
+    const checkDatabase = () => {
+      return new Promise((resolve) => {
+        db.get('SELECT COUNT(*) as count FROM training_sessions', (err, row) => {
+          if (err) {
+            console.log('Database not ready for session creation, retrying...');
+            setTimeout(checkDatabase, 100);
+            return;
+          }
+          console.log('Database ready for session creation');
+          resolve();
+        });
+      });
+    };
+
+    await checkDatabase();
     
     db.run(
       `INSERT INTO training_sessions 
@@ -141,13 +159,16 @@ async function handleCreateSession(req, res) {
       [date, department, location, trainer_name, trainer_designation, training_type, training_title, training_content, session_start_time],
       function(err) {
         if (err) {
-          return res.status(500).json({ error: 'Database error' });
+          console.error('Database error creating session:', err);
+          return res.status(500).json({ error: 'Database error: ' + err.message });
         }
+        console.log('Session created successfully with ID:', this.lastID);
         res.json({ id: this.lastID, message: 'Training session created successfully' });
       }
     );
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Session creation error:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
 
@@ -233,6 +254,76 @@ async function handleCheckIn(req, res) {
   }
 }
 
+// Get today's training session
+async function handleGetTodaySession(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    const today = new Date().toISOString().split('T')[0];
+    
+    db.get('SELECT * FROM training_sessions WHERE date = ? ORDER BY created_at DESC LIMIT 1', [today], (err, session) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(session || null);
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Get all students
+async function handleGetStudents(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    db.all('SELECT id, username, full_name, job_title, role FROM users WHERE role = ?', ['student'], (err, students) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(students);
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Create new student
+async function handleCreateStudent(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { username, password, full_name, job_title } = req.body;
+    const db = getDatabase();
+    
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    
+    db.run(
+      'INSERT INTO users (username, password, role, full_name, job_title) VALUES (?, ?, ?, ?, ?)',
+      [username, hashedPassword, 'student', full_name, job_title],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ id: this.lastID, message: 'Student created successfully' });
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
 // Main handler
 module.exports = async function handler(req, res) {
   console.log('API Request:', req.method, req.url);
@@ -261,6 +352,10 @@ module.exports = async function handler(req, res) {
         console.log('Handling training-session request');
         return await handleCreateSession(req, res);
       
+      case 'training-session/today':
+        console.log('Handling training-session/today request');
+        return await handleGetTodaySession(req, res);
+      
       case 'attendance/session':
         console.log('Handling attendance/session request');
         return await handleGetAttendance(req, res);
@@ -269,6 +364,14 @@ module.exports = async function handler(req, res) {
         console.log('Handling attendance/checkin request');
         authenticateToken(req, res, () => handleCheckIn(req, res));
         break;
+      
+      case 'students':
+        console.log('Handling students request');
+        return await handleGetStudents(req, res);
+      
+      case 'student':
+        console.log('Handling student creation request');
+        return await handleCreateStudent(req, res);
       
       default:
         console.log('Unknown endpoint:', path);
