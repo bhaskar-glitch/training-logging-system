@@ -337,6 +337,162 @@ async function handleCreateStudent(req, res) {
   }
 }
 
+// End training session
+async function handleEndSession(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { sessionId } = req.body;
+    const db = getDatabase();
+    
+    // Get session start time
+    db.get('SELECT session_start_time FROM training_sessions WHERE id = ?', [sessionId], (err, session) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      
+      const endTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const startTime = new Date(session.session_start_time);
+      const endTimeDate = new Date(endTime);
+      const durationMs = endTimeDate - startTime;
+      const durationMinutes = Math.floor(durationMs / (1000 * 60));
+      const hours = Math.floor(durationMinutes / 60);
+      const minutes = durationMinutes % 60;
+      const duration = `${hours}:${minutes.toString().padStart(2, '0')}`;
+      
+      db.run(
+        'UPDATE training_sessions SET session_end_time = ?, duration = ?, duration_minutes = ? WHERE id = ?',
+        [endTime, duration, durationMinutes, sessionId],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          res.json({ message: 'Session ended successfully', duration });
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Delete training session
+async function handleDeleteSession(req, res, sessionId) {
+  if (req.method !== 'DELETE') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    
+    // Delete attendance records first
+    db.run('DELETE FROM attendance WHERE session_id = ?', [sessionId], (err) => {
+      if (err) {
+        console.error('Database error deleting attendance:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      // Delete the session
+      db.run('DELETE FROM training_sessions WHERE id = ?', [sessionId], function(err) {
+        if (err) {
+          console.error('Database error deleting session:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Session not found' });
+        }
+        
+        res.json({ message: 'Session deleted successfully' });
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Get attendance by session ID
+async function handleGetAttendanceBySession(req, res, sessionId) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    
+    db.get('SELECT * FROM training_sessions WHERE id = ?', [sessionId], (err, session) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!session) {
+        return res.status(404).json({ error: 'Training session not found' });
+      }
+
+      db.all(
+        'SELECT a.*, u.full_name as student_name FROM attendance a JOIN users u ON a.student_id = u.id WHERE a.session_id = ? ORDER BY a.check_in_time',
+        [sessionId],
+        (err, attendance) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          res.json({ session, attendance });
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Get today's attendance
+async function handleGetTodayAttendance(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get today's latest session
+    db.get('SELECT * FROM training_sessions WHERE date = ? ORDER BY created_at DESC LIMIT 1', [today], (err, session) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!session) {
+        return res.json({ session: null, attendance: [] });
+      }
+
+      db.all(
+        'SELECT a.*, u.full_name as student_name FROM attendance a JOIN users u ON a.student_id = u.id WHERE a.session_id = ? ORDER BY a.check_in_time',
+        [session.id],
+        (err, attendance) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          res.json({ session, attendance });
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
 // Main handler
 module.exports = async function handler(req, res) {
   console.log('API Request:', req.method, req.url);
@@ -352,6 +508,32 @@ module.exports = async function handler(req, res) {
   console.log('Parsed path:', path);
 
   try {
+    // Handle dynamic routes with parameters
+    if (path.startsWith('training-session/')) {
+      const subPath = path.replace('training-session/', '');
+      if (subPath === 'today') {
+        console.log('Handling training-session/today request');
+        return await handleGetTodaySession(req, res);
+      } else if (subPath === 'end') {
+        console.log('Handling training-session/end request');
+        return await handleEndSession(req, res);
+      } else if (!isNaN(subPath)) {
+        console.log('Handling training-session delete request for ID:', subPath);
+        return await handleDeleteSession(req, res, subPath);
+      }
+    }
+    
+    if (path.startsWith('attendance/session/')) {
+      const sessionId = path.replace('attendance/session/', '');
+      console.log('Handling attendance/session request for ID:', sessionId);
+      return await handleGetAttendanceBySession(req, res, sessionId);
+    }
+    
+    if (path.startsWith('attendance/today')) {
+      console.log('Handling attendance/today request');
+      return await handleGetTodayAttendance(req, res);
+    }
+    
     switch (path) {
       case 'login':
         console.log('Handling login request');
@@ -364,14 +546,6 @@ module.exports = async function handler(req, res) {
       case 'training-session':
         console.log('Handling training-session request');
         return await handleCreateSession(req, res);
-      
-      case 'training-session/today':
-        console.log('Handling training-session/today request');
-        return await handleGetTodaySession(req, res);
-      
-      case 'attendance/session':
-        console.log('Handling attendance/session request');
-        return await handleGetAttendance(req, res);
       
       case 'attendance/checkin':
         console.log('Handling attendance/checkin request');
