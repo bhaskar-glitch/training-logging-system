@@ -122,6 +122,7 @@ async function handleCreateSession(req, res) {
   try {
     const { 
       date, 
+      training_date,  // Handle both field names
       department, 
       location, 
       trainer_name, 
@@ -131,8 +132,20 @@ async function handleCreateSession(req, res) {
       training_content, 
       session_start_time 
     } = req.body;
+    
+    // Use training_date if date is not provided
+    const sessionDate = date || training_date;
+    
+    // Validate required fields
+    if (!sessionDate) {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+    if (!trainer_name) {
+      return res.status(400).json({ error: 'Trainer name is required' });
+    }
 
     console.log('Creating session with data:', req.body);
+    console.log('Using session date:', sessionDate);
     const db = getDatabase();
     
     // Wait for database to be ready
@@ -156,7 +169,7 @@ async function handleCreateSession(req, res) {
       `INSERT INTO training_sessions 
        (date, department, location, trainer_name, trainer_designation, training_type, training_title, training_content, session_start_time) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [date, department, location, trainer_name, trainer_designation, training_type, training_title, training_content, session_start_time],
+      [sessionDate, department, location, trainer_name, trainer_designation, training_type, training_title, training_content, session_start_time],
       function(err) {
         if (err) {
           console.error('Database error creating session:', err);
