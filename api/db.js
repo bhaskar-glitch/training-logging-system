@@ -99,6 +99,31 @@ function initializeDatabase() {
     }
   });
 
+  // Insert default admin user if not exists
+  db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
+    if (err) {
+      console.error('Error checking for admin user:', err);
+      return;
+    }
+    
+    if (!row) {
+      const bcrypt = require('bcrypt');
+      const hashedPassword = bcrypt.hashSync('admin123', 10);
+      
+      db.run(
+        'INSERT INTO users (username, password, role, full_name, job_title) VALUES (?, ?, ?, ?, ?)',
+        ['admin', hashedPassword, 'teacher', 'System Administrator', 'TCO'],
+        (err) => {
+          if (err) {
+            console.error('Error creating default admin user:', err);
+          } else {
+            console.log('Default admin user created: username=admin, password=admin123');
+          }
+        }
+      );
+    }
+  });
+
   // Insert default student user if not exists
   db.get('SELECT id FROM users WHERE role = ?', ['student'], (err, row) => {
     if (err) {
