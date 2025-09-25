@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Training Logging System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        .dashboard-container {
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        .attendance-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1rem;
+        }
+        .btn-checkin {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-checkin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        .btn-export {
+            background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-present {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-absent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-card">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-primary">Training Logging System</h2>
+                <p class="text-muted">Sign in to your account</p>
+            </div>
+
+            <div id="loginError" class="alert alert-danger hidden" role="alert"></div>
+
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" id="loginBtn">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="mt-4 text-center">
+                <small class="text-muted">
+                    Default Teacher: admin / admin123<br>
+                    Add students through teacher dashboard
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Dashboard -->
+    <div id="teacherDashboard" class="dashboard-container hidden">
+        <!-- Enhanced Navigation Bar -->
+        <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div class="container-fluid px-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-graduation-cap me-2" style="font-size: 1.5rem;"></i>
+                    <span class="navbar-brand mb-0 fw-bold">Training System</span>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#teacherNavbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <!-- Navigation Content -->
+                <div class="collapse navbar-collapse" id="teacherNavbar">
+                    <div class="navbar-nav ms-auto d-flex align-items-center">
+                        <div class="d-flex flex-column flex-md-row align-items-center">
+                            <span class="navbar-text me-3 mb-2 mb-md-0" id="teacherName">
+                                <i class="fas fa-user-tie me-1"></i>Welcome, Teacher
+                            </span>
+                            <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-3 mt-3">
+            <div id="teacherMessage" class="alert hidden"></div>
+
+            <!-- Enhanced Tabs -->
+            <div class="card mb-4">
+                <div class="card-body p-0">
+                    <ul class="nav nav-pills nav-fill" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active d-flex align-items-center justify-content-center" 
+                                    onclick="showTeacherTab('session')" 
+                                    style="min-height: 50px;">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                <span>Training Sessions</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link d-flex align-items-center justify-content-center" 
+                                    onclick="showTeacherTab('attendance')" 
+                                    style="min-height: 50px;">
+                                <i class="fas fa-users me-2"></i>
+                                <span>Attendance</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link d-flex align-items-center justify-content-center" 
+                                    onclick="showTeacherTab('students')" 
+                                    style="min-height: 50px;">
+                                <i class="fas fa-user-plus me-2"></i>
+                                <span>Manage Students</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Training Session Tab -->
+            <div id="sessionTab" class="tab-content">
+                <!-- Session List -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                                <h5 class="mb-2 mb-md-0">All Training Sessions</h5>
+                                <button class="btn btn-light btn-sm w-100 w-md-auto" onclick="showCreateForm()">
+                                    <i class="fas fa-plus"></i> Create New Session
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="sessionsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Creation Form -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card" id="sessionFormCard" style="display: none;">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Create New Training Session</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="sessionForm">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Date of Training:</strong></label>
+                                            <input type="date" class="form-control" id="trainingDate" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Department:</strong></label>
+                                            <select class="form-select" id="department">
+                                                <option value="Manufacturing Facility">Manufacturing Facility</option>
+                                                <option value="Quality Control">Quality Control</option>
+                                                <option value="Production">Production</option>
+                                                <option value="Maintenance">Maintenance</option>
+                                                <option value="Safety">Safety</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Location:</strong></label>
+                                            <select class="form-select" id="location">
+                                                <option value="Manufacturing Facility">Manufacturing Facility</option>
+                                                <option value="Training Room 1">Training Room 1</option>
+                                                <option value="Training Room 2">Training Room 2</option>
+                                                <option value="Conference Room">Conference Room</option>
+                                                <option value="Production Floor">Production Floor</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Day of Week:</strong></label>
+                                            <input type="text" class="form-control" id="dayOfWeek" readonly style="background-color: #f8f9fa;">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Trainer Name:</strong></label>
+                                            <input type="text" class="form-control" id="trainerName" placeholder="e.g., Arshi kuan" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Trainer Designation:</strong></label>
+                                            <select class="form-select" id="trainerDesignation">
+                                                <option value="TCO">TCO</option>
+                                                <option value="Manager">Manager</option>
+                                                <option value="Supervisor">Supervisor</option>
+                                                <option value="Lead">Lead</option>
+                                                <option value="Trainer">Trainer</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Training Type:</strong></label>
+                                            <select class="form-select" id="trainingType">
+                                                <option value="Code of Conduct - Daily Orientation">Code of Conduct - Daily Orientation</option>
+                                                <option value="Safety Training">Safety Training</option>
+                                                <option value="Quality Training">Quality Training</option>
+                                                <option value="Process Training">Process Training</option>
+                                                <option value="Equipment Training">Equipment Training</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Training Title:</strong></label>
+                                            <input type="text" class="form-control" id="trainingTitle" value="Code of Conduct - Daily Orientation">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Training Content:</strong></label>
+                                        <textarea class="form-control" rows="3" id="trainingContent" placeholder="e.g., Purpose and Importance, Manufacturing - organisational chart, Professional Code of Conduct, General Code of Conduct" required></textarea>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Start Time:</strong></label>
+                                            <input type="time" class="form-control" id="startTime" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label"><strong>Duration:</strong></label>
+                                            <input type="text" class="form-control" id="durationDisplay" value="Will be calculated when session ends" readonly style="background-color: #f8f9fa;">
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">Create Training Session</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Tab -->
+            <div id="attendanceTab" class="tab-content hidden">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-users me-2"></i>Session Attendance
+                                </h5>
+                                <button class="btn btn-light btn-sm" onclick="loadAttendance()">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <!-- Session Selector -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label"><strong>Select Session:</strong></label>
+                                        <select class="form-select" id="sessionSelector" onchange="onSessionSelect()">
+                                            <option value="">Choose a session...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <button class="btn btn-primary" onclick="loadAttendance()" disabled id="viewAttendanceBtn">
+                                            <i class="fas fa-eye me-1"></i>View Attendance
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Attendance Display -->
+                                <div id="attendanceTable"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students Tab -->
+            <div id="studentsTab" class="tab-content hidden">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Add New Student</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="studentForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="studentUsername" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="studentPassword" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="studentFullName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Job Title</label>
+                                        <input type="text" class="form-control" id="studentJobTitle">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Add Student</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Existing Students</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="studentsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Dashboard -->
+    <div id="studentDashboard" class="dashboard-container hidden">
+        <!-- Enhanced Student Navigation Bar -->
+        <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div class="container-fluid px-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-graduate me-2" style="font-size: 1.5rem;"></i>
+                    <span class="navbar-brand mb-0 fw-bold">Student Portal</span>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#studentNavbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <!-- Navigation Content -->
+                <div class="collapse navbar-collapse" id="studentNavbar">
+                    <div class="navbar-nav ms-auto d-flex align-items-center">
+                        <div class="d-flex flex-column flex-md-row align-items-center">
+                            <span class="navbar-text me-3 mb-2 mb-md-0" id="studentName">
+                                <i class="fas fa-user me-1"></i>Welcome, Student
+                            </span>
+                            <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-3 mt-3">
+            <div id="studentMessage" class="alert hidden"></div>
+
+            <div class="row">
+                <!-- Today's Session Info -->
+                <div class="col-md-6">
+                    <div class="card attendance-card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Training Record</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="studentSessionInfo"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Check-in Section -->
+                <div class="col-md-6">
+                    <div class="card attendance-card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Attendance Check-in</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="checkinSection"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
