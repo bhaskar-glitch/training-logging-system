@@ -656,6 +656,8 @@ module.exports = async function handler(req, res) {
     // Handle dynamic routes with parameters
     if (path.startsWith('training-session/')) {
       const subPath = path.replace('training-session/', '');
+      console.log('Training session subpath:', subPath);
+      
       if (subPath === 'today') {
         console.log('Handling training-session/today request');
         return await handleGetTodaySession(req, res);
@@ -681,6 +683,8 @@ module.exports = async function handler(req, res) {
     
     if (path.startsWith('export/excel/')) {
       const subPath = path.replace('export/excel/', '');
+      console.log('Export subpath:', subPath);
+      
       if (subPath === 'today') {
         console.log('Handling export/excel/today request');
         return await handleExportTodayExcel(req, res);

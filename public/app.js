@@ -174,8 +174,11 @@ async function loadTodaySession() {
         currentSession = session;
         
         if (session) {
-            // Show session info in the exact format from reference
-            document.getElementById('sessionInfo').innerHTML = `
+            // Check if sessionInfo element exists before trying to update it
+            const sessionInfoElement = document.getElementById('sessionInfo');
+            if (sessionInfoElement) {
+                // Show session info in the exact format from reference
+                sessionInfoElement.innerHTML = `
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label"><strong>Date of Training:</strong></label>
@@ -217,13 +220,17 @@ async function loadTodaySession() {
                     <button class="btn btn-outline-primary" onclick="showCreateForm()">Create New Session</button>
                 </div>
             `;
-            document.getElementById('sessionForm').classList.add('hidden');
+                document.getElementById('sessionForm').classList.add('hidden');
+            }
             
             // Load attendance
             await loadAttendance();
         } else {
             // Show form to create session
-            document.getElementById('sessionInfo').innerHTML = '';
+            const sessionInfoElement = document.getElementById('sessionInfo');
+            if (sessionInfoElement) {
+                sessionInfoElement.innerHTML = '';
+            }
             document.getElementById('sessionForm').classList.remove('hidden');
         }
     } catch (error) {
