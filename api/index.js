@@ -36,6 +36,23 @@ async function handleLogin(req, res) {
     const db = getDatabase();
     console.log('Database connection established');
 
+    // Wait for database initialization to complete
+    const checkDatabase = () => {
+      return new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as count FROM users', (err, row) => {
+          if (err) {
+            console.log('Database not ready yet, retrying...');
+            setTimeout(checkDatabase, 100);
+            return;
+          }
+          console.log('Database ready, user count:', row.count);
+          resolve();
+        });
+      });
+    };
+
+    await checkDatabase();
+
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
       if (err) {
         console.error('Database error:', err);
