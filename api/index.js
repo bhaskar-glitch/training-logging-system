@@ -344,11 +344,17 @@ async function handleEndSession(req, res) {
   }
 
   try {
-    const { sessionId } = req.body;
+    const { sessionId, session_id } = req.body;
+    const actualSessionId = sessionId || session_id; // Handle both field names
+    
+    if (!actualSessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+    
     const db = getDatabase();
     
     // Get session start time
-    db.get('SELECT session_start_time FROM training_sessions WHERE id = ?', [sessionId], (err, session) => {
+    db.get('SELECT session_start_time FROM training_sessions WHERE id = ?', [actualSessionId], (err, session) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
@@ -369,7 +375,7 @@ async function handleEndSession(req, res) {
       
       db.run(
         'UPDATE training_sessions SET session_end_time = ?, duration = ?, duration_minutes = ? WHERE id = ?',
-        [endTime, duration, durationMinutes, sessionId],
+        [endTime, duration, durationMinutes, actualSessionId],
         function(err) {
           if (err) {
             console.error('Database error:', err);
@@ -493,6 +499,145 @@ async function handleGetTodayAttendance(req, res) {
   }
 }
 
+// Export today's attendance to Excel
+async function handleExportTodayExcel(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get today's latest session
+    db.get('SELECT * FROM training_sessions WHERE date = ? ORDER BY created_at DESC LIMIT 1', [today], (err, session) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!session) {
+        return res.status(404).json({ error: 'No session found for today' });
+      }
+
+      // Get attendance for this session
+      db.all(
+        'SELECT a.*, u.full_name as student_name FROM attendance a JOIN users u ON a.student_id = u.id WHERE a.session_id = ? ORDER BY a.check_in_time',
+        [session.id],
+        (err, attendance) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          
+          generateExcelFile(res, session, attendance);
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Export session attendance to Excel
+async function handleExportSessionExcel(req, res, sessionId) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    
+    db.get('SELECT * FROM training_sessions WHERE id = ?', [sessionId], (err, session) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      db.all(
+        'SELECT a.*, u.full_name as student_name FROM attendance a JOIN users u ON a.student_id = u.id WHERE a.session_id = ? ORDER BY a.check_in_time',
+        [sessionId],
+        (err, attendance) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          
+          generateExcelFile(res, session, attendance);
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// Generate Excel file
+function generateExcelFile(res, session, attendance) {
+  try {
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Attendance Report');
+
+    // Set headers
+    worksheet.columns = [
+      { header: 'Student Name', key: 'student_name', width: 20 },
+      { header: 'Job Title', key: 'job_title', width: 15 },
+      { header: 'Check-in Time', key: 'check_in_time', width: 20 },
+      { header: 'Signature', key: 'signature', width: 20 },
+      { header: 'Comments', key: 'comments', width: 30 }
+    ];
+
+    // Add session info
+    worksheet.addRow([]);
+    worksheet.addRow(['Session Information']);
+    worksheet.addRow(['Date:', session.date]);
+    worksheet.addRow(['Department:', session.department || 'N/A']);
+    worksheet.addRow(['Location:', session.location || 'N/A']);
+    worksheet.addRow(['Trainer:', session.trainer_name]);
+    worksheet.addRow(['Training Type:', session.training_type || 'N/A']);
+    worksheet.addRow(['Start Time:', session.session_start_time || 'N/A']);
+    worksheet.addRow(['End Time:', session.session_end_time || 'N/A']);
+    worksheet.addRow(['Duration:', session.duration || 'N/A']);
+    worksheet.addRow([]);
+
+    // Add attendance data
+    worksheet.addRow(['Attendance Records']);
+    worksheet.addRow(['Student Name', 'Job Title', 'Check-in Time', 'Signature', 'Comments']);
+
+    attendance.forEach(record => {
+      worksheet.addRow([
+        record.student_name,
+        record.job_title || 'N/A',
+        record.check_in_time,
+        record.signature || 'N/A',
+        record.comments || 'N/A'
+      ]);
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_${session.date}_${session.id}.xlsx"`);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Write Excel file to response
+    workbook.xlsx.write(res).then(() => {
+      res.end();
+    }).catch(err => {
+      console.error('Excel generation error:', err);
+      res.status(500).json({ error: 'Excel generation failed' });
+    });
+
+  } catch (error) {
+    console.error('Excel file generation error:', error);
+    res.status(500).json({ error: 'Excel generation failed' });
+  }
+}
+
 // Main handler
 module.exports = async function handler(req, res) {
   console.log('API Request:', req.method, req.url);
@@ -532,6 +677,18 @@ module.exports = async function handler(req, res) {
     if (path.startsWith('attendance/today')) {
       console.log('Handling attendance/today request');
       return await handleGetTodayAttendance(req, res);
+    }
+    
+    if (path.startsWith('export/excel/')) {
+      const subPath = path.replace('export/excel/', '');
+      if (subPath === 'today') {
+        console.log('Handling export/excel/today request');
+        return await handleExportTodayExcel(req, res);
+      } else if (subPath.startsWith('session/')) {
+        const sessionId = subPath.replace('session/', '');
+        console.log('Handling export/excel/session request for ID:', sessionId);
+        return await handleExportSessionExcel(req, res, sessionId);
+      }
     }
     
     switch (path) {
