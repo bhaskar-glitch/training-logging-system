@@ -136,6 +136,194 @@
         </div>
     </div>
 
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="dashboard-container hidden">
+        <div class="container-fluid">
+            <!-- Admin Navigation -->
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="#">
+                        <i class="fas fa-cogs me-2"></i>Admin Dashboard
+                    </a>
+                    <div class="navbar-nav ms-auto">
+                        <span class="navbar-text me-3" id="adminName">Welcome, Admin</span>
+                        <button class="btn btn-outline-light" onclick="logout()">
+                            <i class="fas fa-sign-out-alt me-1"></i>Logout
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Admin Tabs -->
+            <ul class="nav nav-pills nav-fill mb-4" id="adminTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="students-tab" data-bs-toggle="pill" data-bs-target="#students" type="button" role="tab">
+                        <i class="fas fa-users me-2"></i>Students
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="departments-tab" data-bs-toggle="pill" data-bs-target="#departments" type="button" role="tab">
+                        <i class="fas fa-building me-2"></i>Departments
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="job-titles-tab" data-bs-toggle="pill" data-bs-target="#job-titles" type="button" role="tab">
+                        <i class="fas fa-briefcase me-2"></i>Job Titles
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="training-types-tab" data-bs-toggle="pill" data-bs-target="#training-types" type="button" role="tab">
+                        <i class="fas fa-graduation-cap me-2"></i>Training Types
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Admin Tab Content -->
+            <div class="tab-content" id="adminTabContent">
+                <!-- Students Tab -->
+                <div class="tab-pane fade show active" id="students" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-users me-2"></i>Student Management
+                                    </h5>
+                                    <button class="btn btn-primary" onclick="showAddStudentModal()">
+                                        <i class="fas fa-plus me-1"></i>Add Student
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="adminMessage"></div>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Job Title</th>
+                                                    <th>Department</th>
+                                                    <th>Phone</th>
+                                                    <th>Last Login</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="studentsTableBody">
+                                                <!-- Students will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Departments Tab -->
+                <div class="tab-pane fade" id="departments" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-building me-2"></i>Department Management
+                                    </h5>
+                                    <button class="btn btn-primary" onclick="showAddDepartmentModal()">
+                                        <i class="fas fa-plus me-1"></i>Add Department
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Description</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="departmentsTableBody">
+                                                <!-- Departments will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Job Titles Tab -->
+                <div class="tab-pane fade" id="job-titles" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-briefcase me-2"></i>Job Title Management
+                                    </h5>
+                                    <button class="btn btn-primary" onclick="showAddJobTitleModal()">
+                                        <i class="fas fa-plus me-1"></i>Add Job Title
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Title</th>
+                                                    <th>Department</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="jobTitlesTableBody">
+                                                <!-- Job titles will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Types Tab -->
+                <div class="tab-pane fade" id="training-types" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-graduation-cap me-2"></i>Training Type Management
+                                    </h5>
+                                    <button class="btn btn-primary" onclick="showAddTrainingTypeModal()">
+                                        <i class="fas fa-plus me-1"></i>Add Training Type
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Description</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="trainingTypesTableBody">
+                                                <!-- Training types will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Teacher Dashboard -->
     <div id="teacherDashboard" class="dashboard-container hidden">
         <!-- Enhanced Navigation Bar -->
@@ -482,6 +670,159 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Admin Modals -->
+    <!-- Add Student Modal -->
+    <div class="modal fade" id="addStudentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="adminStudentForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="adminStudentEmail" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="adminStudentPassword" required minlength="6">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="adminStudentFullName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="adminStudentPhone">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Job Title</label>
+                                    <select class="form-select" id="adminStudentJobTitle">
+                                        <option value="">Select Job Title</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Department</label>
+                                    <select class="form-select" id="adminStudentDepartment">
+                                        <option value="">Select Department</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addAdminStudent()">Add Student</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Department Modal -->
+    <div class="modal fade" id="addDepartmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Department</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="departmentForm">
+                        <div class="mb-3">
+                            <label class="form-label">Department Name</label>
+                            <input type="text" class="form-control" id="departmentName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="departmentDescription" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addDepartment()">Add Department</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Job Title Modal -->
+    <div class="modal fade" id="addJobTitleModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Job Title</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="jobTitleForm">
+                        <div class="mb-3">
+                            <label class="form-label">Job Title</label>
+                            <input type="text" class="form-control" id="jobTitleName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Department</label>
+                            <select class="form-select" id="jobTitleDepartment" required>
+                                <option value="">Select Department</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addJobTitle()">Add Job Title</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Training Type Modal -->
+    <div class="modal fade" id="addTrainingTypeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Training Type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="trainingTypeForm">
+                        <div class="mb-3">
+                            <label class="form-label">Training Type Name</label>
+                            <input type="text" class="form-control" id="trainingTypeName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="trainingTypeDescription" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addTrainingType()">Add Training Type</button>
+                </div>
+            </div>
         </div>
     </div>
 

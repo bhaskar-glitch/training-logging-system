@@ -817,6 +817,22 @@ module.exports = async function handler(req, res) {
         console.log('Handling student creation request');
         return await handleCreateStudent(req, res);
       
+      case 'admin/departments':
+        console.log('Handling departments request');
+        return await handleDepartments(req, res);
+      
+      case 'admin/job-titles':
+        console.log('Handling job titles request');
+        return await handleJobTitles(req, res);
+      
+      case 'admin/training-types':
+        console.log('Handling training types request');
+        return await handleTrainingTypes(req, res);
+      
+      case 'admin/students':
+        console.log('Handling admin students request');
+        return await handleAdminStudents(req, res);
+      
       default:
         console.log('Unknown endpoint:', path);
         res.status(404).json({ error: 'API endpoint not found' });
@@ -824,5 +840,272 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error('API Error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// Admin: Departments management
+async function handleDepartments(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const db = getDatabase();
+      db.all('SELECT * FROM departments WHERE is_active = 1 ORDER BY name', (err, rows) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ departments: rows });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const { name, description } = req.body;
+      const db = getDatabase();
+      
+      db.run('INSERT INTO departments (name, description) VALUES (?, ?)', 
+        [name, description], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ id: this.lastID, message: 'Department created successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'PUT') {
+    try {
+      const { id, name, description } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE departments SET name = ?, description = ? WHERE id = ?', 
+        [name, description, id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Department updated successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'DELETE') {
+    try {
+      const { id } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE departments SET is_active = 0 WHERE id = ?', [id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Department deleted successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}
+
+// Admin: Job titles management
+async function handleJobTitles(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const db = getDatabase();
+      db.all(`
+        SELECT jt.*, d.name as department_name 
+        FROM job_titles jt 
+        LEFT JOIN departments d ON jt.department_id = d.id 
+        WHERE jt.is_active = 1 
+        ORDER BY jt.title
+      `, (err, rows) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ jobTitles: rows });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const { title, department_id } = req.body;
+      const db = getDatabase();
+      
+      db.run('INSERT INTO job_titles (title, department_id) VALUES (?, ?)', 
+        [title, department_id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ id: this.lastID, message: 'Job title created successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'PUT') {
+    try {
+      const { id, title, department_id } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE job_titles SET title = ?, department_id = ? WHERE id = ?', 
+        [title, department_id, id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Job title updated successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'DELETE') {
+    try {
+      const { id } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE job_titles SET is_active = 0 WHERE id = ?', [id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Job title deleted successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}
+
+// Admin: Training types management
+async function handleTrainingTypes(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const db = getDatabase();
+      db.all('SELECT * FROM training_types WHERE is_active = 1 ORDER BY name', (err, rows) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ trainingTypes: rows });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const { name, description } = req.body;
+      const db = getDatabase();
+      
+      db.run('INSERT INTO training_types (name, description) VALUES (?, ?)', 
+        [name, description], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ id: this.lastID, message: 'Training type created successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'PUT') {
+    try {
+      const { id, name, description } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE training_types SET name = ?, description = ? WHERE id = ?', 
+        [name, description, id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Training type updated successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'DELETE') {
+    try {
+      const { id } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE training_types SET is_active = 0 WHERE id = ?', [id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Training type deleted successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}
+
+// Admin: Students management
+async function handleAdminStudents(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const db = getDatabase();
+      db.all(`
+        SELECT u.*, d.name as department_name 
+        FROM users u 
+        LEFT JOIN departments d ON u.department = d.name 
+        WHERE u.role = 'student' AND u.is_active = 1 
+        ORDER BY u.full_name
+      `, (err, rows) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ students: rows });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'PUT') {
+    try {
+      const { id, email, full_name, job_title, phone, department } = req.body;
+      const db = getDatabase();
+      
+      db.run(`
+        UPDATE users 
+        SET email = ?, full_name = ?, job_title = ?, phone = ?, department = ? 
+        WHERE id = ? AND role = 'student'
+      `, [email, full_name, job_title, phone, department, id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Student updated successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else if (req.method === 'DELETE') {
+    try {
+      const { id } = req.body;
+      const db = getDatabase();
+      
+      db.run('UPDATE users SET is_active = 0 WHERE id = ? AND role = "student"', [id], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ message: 'Student deleted successfully' });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }

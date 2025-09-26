@@ -192,9 +192,23 @@ function showStudentDashboard() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('teacherDashboard').classList.add('hidden');
     document.getElementById('studentDashboard').classList.remove('hidden');
+    document.getElementById('adminDashboard').classList.add('hidden');
     
     document.getElementById('studentName').textContent = `Welcome, ${currentUser.full_name}`;
     loadStudentData();
+    
+    // Start session timeout
+    resetSessionTimeout();
+}
+
+function showAdminDashboard() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('teacherDashboard').classList.add('hidden');
+    document.getElementById('studentDashboard').classList.add('hidden');
+    document.getElementById('adminDashboard').classList.remove('hidden');
+    
+    document.getElementById('adminName').textContent = `Welcome, ${currentUser.full_name}`;
+    loadAdminData();
     
     // Start session timeout
     resetSessionTimeout();
@@ -214,6 +228,10 @@ async function loadTeacherData() {
         
         // Load students
         await loadStudents();
+        
+        // Load departments and job titles for dynamic dropdowns
+        await loadDepartments();
+        await loadJobTitles();
         
         // Set current date and auto-fill all fields
         const today = new Date();
@@ -1091,7 +1109,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await login(email, password);
             console.log('Login successful:', data);
             
-            if (data.user.role === 'teacher') {
+            if (data.user.role === 'admin') {
+                showAdminDashboard();
+            } else if (data.user.role === 'teacher') {
                 showTeacherDashboard();
             } else {
                 showStudentDashboard();
@@ -1133,3 +1153,365 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
 });
+
+// Admin Dashboard Functions
+async function loadAdminData() {
+    try {
+        await loadStudents();
+        await loadDepartments();
+        await loadJobTitles();
+        await loadTrainingTypes();
+    } catch (error) {
+        console.error('Error loading admin data:', error);
+    }
+}
+
+async function loadStudents() {
+    try {
+        const data = await apiCall('/api/admin/students');
+        displayStudents(data.students);
+    } catch (error) {
+        console.error('Error loading students:', error);
+    }
+}
+
+function displayStudents(students) {
+    const tbody = document.getElementById('studentsTableBody');
+    tbody.innerHTML = '';
+    
+    students.forEach(student => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${student.full_name}</td>
+            <td>${student.email}</td>
+            <td>${student.job_title || 'N/A'}</td>
+            <td>${student.department || 'N/A'}</td>
+            <td>${student.phone || 'N/A'}</td>
+            <td>${student.last_login ? formatDate(student.last_login) : 'Never'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editStudent(${student.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${student.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function loadDepartments() {
+    try {
+        const data = await apiCall('/api/admin/departments');
+        displayDepartments(data.departments);
+        populateDepartmentSelects(data.departments);
+    } catch (error) {
+        console.error('Error loading departments:', error);
+    }
+}
+
+function displayDepartments(departments) {
+    const tbody = document.getElementById('departmentsTableBody');
+    tbody.innerHTML = '';
+    
+    departments.forEach(dept => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${dept.name}</td>
+            <td>${dept.description || 'N/A'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editDepartment(${dept.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteDepartment(${dept.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function loadJobTitles() {
+    try {
+        const data = await apiCall('/api/admin/job-titles');
+        displayJobTitles(data.jobTitles);
+        populateJobTitleSelects(data.jobTitles);
+    } catch (error) {
+        console.error('Error loading job titles:', error);
+    }
+}
+
+function displayJobTitles(jobTitles) {
+    const tbody = document.getElementById('jobTitlesTableBody');
+    tbody.innerHTML = '';
+    
+    jobTitles.forEach(job => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${job.title}</td>
+            <td>${job.department_name || 'N/A'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editJobTitle(${job.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteJobTitle(${job.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function loadTrainingTypes() {
+    try {
+        const data = await apiCall('/api/admin/training-types');
+        displayTrainingTypes(data.trainingTypes);
+        populateTrainingTypeSelects(data.trainingTypes);
+    } catch (error) {
+        console.error('Error loading training types:', error);
+    }
+}
+
+function displayTrainingTypes(trainingTypes) {
+    const tbody = document.getElementById('trainingTypesTableBody');
+    tbody.innerHTML = '';
+    
+    trainingTypes.forEach(type => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${type.name}</td>
+            <td>${type.description || 'N/A'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editTrainingType(${type.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteTrainingType(${type.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Modal functions
+function showAddStudentModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addStudentModal'));
+    modal.show();
+}
+
+function showAddDepartmentModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addDepartmentModal'));
+    modal.show();
+}
+
+function showAddJobTitleModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addJobTitleModal'));
+    modal.show();
+}
+
+function showAddTrainingTypeModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addTrainingTypeModal'));
+    modal.show();
+}
+
+// Add functions
+async function addAdminStudent() {
+    const email = document.getElementById('adminStudentEmail').value;
+    const password = document.getElementById('adminStudentPassword').value;
+    const fullName = document.getElementById('adminStudentFullName').value;
+    const phone = document.getElementById('adminStudentPhone').value;
+    const jobTitle = document.getElementById('adminStudentJobTitle').value;
+    const department = document.getElementById('adminStudentDepartment').value;
+    
+    try {
+        await apiCall('/api/students', {
+            method: 'POST',
+            body: JSON.stringify({
+                email, password, full_name: fullName, phone, job_title: jobTitle, department
+            })
+        });
+        
+        showSuccess('adminMessage', 'Student added successfully!');
+        document.getElementById('adminStudentForm').reset();
+        bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+        await loadStudents();
+    } catch (error) {
+        showError('adminMessage', error.message);
+    }
+}
+
+async function addDepartment() {
+    const name = document.getElementById('departmentName').value;
+    const description = document.getElementById('departmentDescription').value;
+    
+    try {
+        await apiCall('/api/admin/departments', {
+            method: 'POST',
+            body: JSON.stringify({ name, description })
+        });
+        
+        showSuccess('adminMessage', 'Department added successfully!');
+        document.getElementById('departmentForm').reset();
+        bootstrap.Modal.getInstance(document.getElementById('addDepartmentModal')).hide();
+        await loadDepartments();
+    } catch (error) {
+        showError('adminMessage', error.message);
+    }
+}
+
+async function addJobTitle() {
+    const title = document.getElementById('jobTitleName').value;
+    const departmentId = document.getElementById('jobTitleDepartment').value;
+    
+    try {
+        await apiCall('/api/admin/job-titles', {
+            method: 'POST',
+            body: JSON.stringify({ title, department_id: departmentId })
+        });
+        
+        showSuccess('adminMessage', 'Job title added successfully!');
+        document.getElementById('jobTitleForm').reset();
+        bootstrap.Modal.getInstance(document.getElementById('addJobTitleModal')).hide();
+        await loadJobTitles();
+    } catch (error) {
+        showError('adminMessage', error.message);
+    }
+}
+
+async function addTrainingType() {
+    const name = document.getElementById('trainingTypeName').value;
+    const description = document.getElementById('trainingTypeDescription').value;
+    
+    try {
+        await apiCall('/api/admin/training-types', {
+            method: 'POST',
+            body: JSON.stringify({ name, description })
+        });
+        
+        showSuccess('adminMessage', 'Training type added successfully!');
+        document.getElementById('trainingTypeForm').reset();
+        bootstrap.Modal.getInstance(document.getElementById('addTrainingTypeModal')).hide();
+        await loadTrainingTypes();
+    } catch (error) {
+        showError('adminMessage', error.message);
+    }
+}
+
+// Populate select dropdowns
+function populateDepartmentSelects(departments) {
+    const selects = ['adminStudentDepartment', 'jobTitleDepartment', 'studentDepartment'];
+    
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+            // Clear existing options except first
+            select.innerHTML = '<option value="">Select Department</option>';
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.name;
+                option.textContent = dept.name;
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
+function populateJobTitleSelects(jobTitles) {
+    const select = document.getElementById('adminStudentJobTitle');
+    if (select) {
+        select.innerHTML = '<option value="">Select Job Title</option>';
+        jobTitles.forEach(job => {
+            const option = document.createElement('option');
+            option.value = job.title;
+            option.textContent = job.title;
+            select.appendChild(option);
+        });
+    }
+}
+
+function populateTrainingTypeSelects(trainingTypes) {
+    // This would be used for training type dropdowns if needed
+    console.log('Training types loaded:', trainingTypes);
+}
+
+// Delete functions
+async function deleteStudent(id) {
+    if (confirm('Are you sure you want to delete this student?')) {
+        try {
+            await apiCall('/api/admin/students', {
+                method: 'DELETE',
+                body: JSON.stringify({ id })
+            });
+            showSuccess('adminMessage', 'Student deleted successfully!');
+            await loadStudents();
+        } catch (error) {
+            showError('adminMessage', error.message);
+        }
+    }
+}
+
+async function deleteDepartment(id) {
+    if (confirm('Are you sure you want to delete this department?')) {
+        try {
+            await apiCall('/api/admin/departments', {
+                method: 'DELETE',
+                body: JSON.stringify({ id })
+            });
+            showSuccess('adminMessage', 'Department deleted successfully!');
+            await loadDepartments();
+        } catch (error) {
+            showError('adminMessage', error.message);
+        }
+    }
+}
+
+async function deleteJobTitle(id) {
+    if (confirm('Are you sure you want to delete this job title?')) {
+        try {
+            await apiCall('/api/admin/job-titles', {
+                method: 'DELETE',
+                body: JSON.stringify({ id })
+            });
+            showSuccess('adminMessage', 'Job title deleted successfully!');
+            await loadJobTitles();
+        } catch (error) {
+            showError('adminMessage', error.message);
+        }
+    }
+}
+
+async function deleteTrainingType(id) {
+    if (confirm('Are you sure you want to delete this training type?')) {
+        try {
+            await apiCall('/api/admin/training-types', {
+                method: 'DELETE',
+                body: JSON.stringify({ id })
+            });
+            showSuccess('adminMessage', 'Training type deleted successfully!');
+            await loadTrainingTypes();
+        } catch (error) {
+            showError('adminMessage', error.message);
+        }
+    }
+}
+
+// Edit functions (placeholder for future implementation)
+function editStudent(id) {
+    alert('Edit student functionality coming soon!');
+}
+
+function editDepartment(id) {
+    alert('Edit department functionality coming soon!');
+}
+
+function editJobTitle(id) {
+    alert('Edit job title functionality coming soon!');
+}
+
+function editTrainingType(id) {
+    alert('Edit training type functionality coming soon!');
+}

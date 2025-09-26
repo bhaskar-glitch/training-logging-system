@@ -96,6 +96,58 @@ function initializeDatabase() {
       }
     });
 
+    // Create departments table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        console.error('Error creating departments table:', err);
+      } else {
+        console.log('Departments table created successfully');
+      }
+    });
+
+    // Create job_titles table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS job_titles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT UNIQUE NOT NULL,
+        department_id INTEGER,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (department_id) REFERENCES departments (id)
+      )
+    `, (err) => {
+      if (err) {
+        console.error('Error creating job_titles table:', err);
+      } else {
+        console.log('Job titles table created successfully');
+      }
+    });
+
+    // Create training_types table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS training_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        console.error('Error creating training_types table:', err);
+      } else {
+        console.log('Training types table created successfully');
+      }
+    });
+
     // Insert default users after tables are created
     db.run(`
       INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
@@ -148,10 +200,93 @@ function initializeDatabase() {
         console.error('Error creating student user:', err);
       } else {
         console.log('Student user created successfully');
-        isInitialized = true;
-        console.log('Database initialization completed successfully');
       }
     });
+
+    // Insert default departments
+    const defaultDepartments = [
+      ['Manufacturing', 'Production and manufacturing operations'],
+      ['Quality Control', 'Quality assurance and control'],
+      ['Maintenance', 'Equipment maintenance and repair'],
+      ['Safety', 'Safety and compliance'],
+      ['Administration', 'Administrative functions'],
+      ['IT Department', 'Information technology'],
+      ['Training Department', 'Training and development']
+    ];
+
+    defaultDepartments.forEach(([name, description]) => {
+      db.run(`
+        INSERT OR IGNORE INTO departments (name, description) 
+        VALUES (?, ?)
+      `, [name, description], (err) => {
+        if (err) {
+          console.error(`Error creating department ${name}:`, err);
+        } else {
+          console.log(`Department ${name} created successfully`);
+        }
+      });
+    });
+
+    // Insert default job titles
+    const defaultJobTitles = [
+      ['Trainee', 1], // Manufacturing
+      ['Operator', 1],
+      ['Supervisor', 1],
+      ['Quality Inspector', 2], // Quality Control
+      ['QC Manager', 2],
+      ['Maintenance Technician', 3], // Maintenance
+      ['Maintenance Supervisor', 3],
+      ['Safety Officer', 4], // Safety
+      ['Safety Manager', 4],
+      ['Administrative Assistant', 5], // Administration
+      ['Office Manager', 5],
+      ['IT Support', 6], // IT Department
+      ['System Administrator', 6],
+      ['Training Coordinator', 7], // Training Department
+      ['Training Manager', 7]
+    ];
+
+    defaultJobTitles.forEach(([title, deptId]) => {
+      db.run(`
+        INSERT OR IGNORE INTO job_titles (title, department_id) 
+        VALUES (?, ?)
+      `, [title, deptId], (err) => {
+        if (err) {
+          console.error(`Error creating job title ${title}:`, err);
+        } else {
+          console.log(`Job title ${title} created successfully`);
+        }
+      });
+    });
+
+    // Insert default training types
+    const defaultTrainingTypes = [
+      ['Code of Conduct - Daily Orientation', 'Daily orientation and code of conduct training'],
+      ['Safety Training', 'Workplace safety and hazard awareness'],
+      ['Equipment Operation', 'Training on specific equipment operation'],
+      ['Quality Standards', 'Quality control and standards training'],
+      ['Emergency Procedures', 'Emergency response and evacuation procedures'],
+      ['Compliance Training', 'Regulatory compliance and legal requirements']
+    ];
+
+    defaultTrainingTypes.forEach(([name, description]) => {
+      db.run(`
+        INSERT OR IGNORE INTO training_types (name, description) 
+        VALUES (?, ?)
+      `, [name, description], (err) => {
+        if (err) {
+          console.error(`Error creating training type ${name}:`, err);
+        } else {
+          console.log(`Training type ${name} created successfully`);
+        }
+      });
+    });
+
+    // Mark initialization as complete
+    setTimeout(() => {
+      isInitialized = true;
+      console.log('Database initialization completed successfully');
+    }, 2000);
   });
 }
 
