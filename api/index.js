@@ -30,8 +30,18 @@ async function handleLogin(req, res) {
   }
 
   try {
-    const { username, password } = req.body;
-    console.log('Login attempt for user:', username);
+    const { email, password } = req.body;
+    console.log('Login attempt for email:', email);
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
     
     const db = getDatabase();
     console.log('Database connection established');
@@ -53,7 +63,7 @@ async function handleLogin(req, res) {
 
     await checkDatabase();
 
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+    db.get('SELECT * FROM users WHERE email = ? AND is_active = 1', [email.toLowerCase()], (err, user) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Database error: ' + err.message });
@@ -62,28 +72,38 @@ async function handleLogin(req, res) {
       console.log('User found:', user ? 'Yes' : 'No');
       
       if (!user) {
-        console.log('User not found');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        console.log('Email not registered:', email);
+        return res.status(401).json({ error: 'Email not registered. Please check your email or contact administrator.' });
       }
 
       const passwordMatch = bcrypt.compareSync(password, user.password);
       console.log('Password match:', passwordMatch);
       
       if (!passwordMatch) {
-        console.log('Invalid password');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        console.log('Incorrect password for email:', email);
+        return res.status(401).json({ error: 'Incorrect password. Please try again.' });
       }
 
-      console.log('Login successful for user:', user.username);
-      const token = generateToken({ id: user.id, role: user.role });
+      // Update last login
+      const lastLogin = new Date().toISOString();
+      db.run('UPDATE users SET last_login = ? WHERE id = ?', [lastLogin, user.id], (err) => {
+        if (err) {
+          console.error('Error updating last login:', err);
+        }
+      });
+
+      console.log('Login successful for user:', user.email);
+      const token = generateToken({ id: user.id, email: user.email, role: user.role });
       res.json({ 
         token, 
         user: { 
           id: user.id, 
-          username: user.username, 
+          email: user.email, 
           role: user.role, 
           full_name: user.full_name,
-          job_title: user.job_title 
+          job_title: user.job_title,
+          department: user.department,
+          last_login: user.last_login
         } 
       });
     });
@@ -345,24 +365,64 @@ async function handleCreateStudent(req, res) {
   }
 
   try {
-    const { username, password, full_name, job_title } = req.body;
-    console.log('Student data:', { username, full_name, job_title });
+    const { email, password, full_name, job_title, phone, department } = req.body;
+    console.log('Student data:', { email, full_name, job_title, phone, department });
+    
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: 'Email, password, and full name are required' });
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+    
+    // Password validation
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+    
     const db = getDatabase();
     
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    
-    db.run(
-      'INSERT INTO users (username, password, role, full_name, job_title) VALUES (?, ?, ?, ?, ?)',
-      [username, hashedPassword, 'student', full_name, job_title],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        res.json({ id: this.lastID, message: 'Student created successfully' });
+    // Check if email already exists
+    db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()], (err, existingUser) => {
+      if (err) {
+        console.error('Database error checking existing user:', err);
+        return res.status(500).json({ error: 'Database error' });
       }
-    );
+      
+      if (existingUser) {
+        return res.status(409).json({ error: 'Email already registered. Please use a different email address.' });
+      }
+      
+      const hashedPassword = bcrypt.hashSync(password, 10);
+      
+      db.run(
+        'INSERT INTO users (email, password, role, full_name, job_title, phone, department) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [email.toLowerCase(), hashedPassword, 'student', full_name, job_title || '', phone || '', department || ''],
+        function(err) {
+          if (err) {
+            console.error('Database error creating student:', err);
+            return res.status(500).json({ error: 'Database error: ' + err.message });
+          }
+          console.log('Student created successfully with ID:', this.lastID);
+          res.json({ 
+            id: this.lastID, 
+            message: 'Student created successfully',
+            user: {
+              id: this.lastID,
+              email: email,
+              full_name: full_name,
+              job_title: job_title,
+              department: department
+            }
+          });
+        }
+      );
+    });
   } catch (error) {
+    console.error('Create student error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 }

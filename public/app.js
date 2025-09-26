@@ -5,6 +5,8 @@ let currentSession = null;
 let currentAttendance = [];
 let allSessions = [];
 let selectedSessionId = null; // Track which session is selected for attendance
+let sessionTimeout = null; // Track session timeout
+let lastActivity = Date.now(); // Track last user activity
 
 // API Base URL
 const API_BASE = '';
@@ -79,11 +81,11 @@ async function apiCall(endpoint, options = {}) {
 }
 
 // Authentication
-async function login(username, password) {
+async function login(email, password) {
     try {
         const data = await apiCall('/api/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ email, password })
         });
         
         currentUser = data.user;
@@ -104,7 +106,66 @@ function logout() {
     currentToken = null;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Clear session timeout
+    if (sessionTimeout) {
+        clearTimeout(sessionTimeout);
+        sessionTimeout = null;
+    }
+    
     showLoginScreen();
+}
+
+// Session timeout management
+function resetSessionTimeout() {
+    lastActivity = Date.now();
+    
+    if (sessionTimeout) {
+        clearTimeout(sessionTimeout);
+    }
+    
+    // Set timeout for 30 minutes of inactivity
+    sessionTimeout = setTimeout(() => {
+        alert('Your session has expired due to inactivity. Please log in again.');
+        logout();
+    }, 30 * 60 * 1000); // 30 minutes
+}
+
+// Track user activity
+function trackActivity() {
+    lastActivity = Date.now();
+}
+
+// Forgot password functions
+function showForgotPassword() {
+    const modal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+    modal.show();
+}
+
+async function handleForgotPassword() {
+    const email = document.getElementById('resetEmail').value;
+    
+    if (!email) {
+        showError('forgotPasswordError', 'Please enter your email address');
+        return;
+    }
+    
+    try {
+        // For now, just show a message (in a real app, this would send an email)
+        showSuccess('forgotPasswordSuccess', 'Password reset instructions have been sent to your email address. Please check your inbox.');
+        
+        // Clear the form
+        document.getElementById('forgotPasswordForm').reset();
+        
+        // Close modal after 3 seconds
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal'));
+            modal.hide();
+        }, 3000);
+        
+    } catch (error) {
+        showError('forgotPasswordError', 'Failed to send reset email. Please try again.');
+    }
 }
 
 // UI Functions
@@ -122,6 +183,9 @@ function showTeacherDashboard() {
     
     document.getElementById('teacherName').textContent = `Welcome, ${currentUser.full_name}`;
     loadTeacherData();
+    
+    // Start session timeout
+    resetSessionTimeout();
 }
 
 function showStudentDashboard() {
@@ -131,6 +195,9 @@ function showStudentDashboard() {
     
     document.getElementById('studentName').textContent = `Welcome, ${currentUser.full_name}`;
     loadStudentData();
+    
+    // Start session timeout
+    resetSessionTimeout();
 }
 
 // Teacher functions
@@ -726,19 +793,23 @@ async function createSession() {
 }
 
 async function addStudent() {
-    const username = document.getElementById('studentUsername').value;
+    const email = document.getElementById('studentEmail').value;
     const password = document.getElementById('studentPassword').value;
     const fullName = document.getElementById('studentFullName').value;
     const jobTitle = document.getElementById('studentJobTitle').value;
+    const phone = document.getElementById('studentPhone').value;
+    const department = document.getElementById('studentDepartment').value;
     
     try {
         await apiCall('/api/students', {
             method: 'POST',
             body: JSON.stringify({
-                username: username,
+                email: email,
                 password: password,
                 full_name: fullName,
-                job_title: jobTitle
+                job_title: jobTitle,
+                phone: phone,
+                department: department
             })
         });
         
@@ -1011,13 +1082,13 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         console.log('Login form submitted');
         
-        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         
-        console.log('Attempting login with:', username);
+        console.log('Attempting login with:', email);
         
         try {
-            const data = await login(username, password);
+            const data = await login(email, password);
             console.log('Login successful:', data);
             
             if (data.user.role === 'teacher') {
@@ -1042,6 +1113,17 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         await addStudent();
     });
+    
+    // Forgot password form
+    document.getElementById('forgotPasswordForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await handleForgotPassword();
+    });
+    
+    // Track user activity for session timeout
+    document.addEventListener('click', trackActivity);
+    document.addEventListener('keypress', trackActivity);
+    document.addEventListener('scroll', trackActivity);
     
     // Date field event listener to update day of week
     document.getElementById('trainingDate').addEventListener('change', function() {

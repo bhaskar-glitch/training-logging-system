@@ -29,11 +29,15 @@ function initializeDatabase() {
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('teacher', 'student')),
         full_name TEXT NOT NULL,
         job_title TEXT,
+        phone TEXT,
+        department TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        last_login DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `, (err) => {
@@ -94,14 +98,15 @@ function initializeDatabase() {
 
     // Insert default users after tables are created
     db.run(`
-      INSERT OR IGNORE INTO users (username, password, role, full_name, job_title) 
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
+      VALUES (?, ?, ?, ?, ?, ?)
     `, [
-      'admin', 
+      'admin@training.com', 
       bcrypt.hashSync('admin123', 10), 
       'teacher', 
       'System Administrator', 
-      'TCO'
+      'TCO',
+      'IT Department'
     ], (err) => {
       if (err) {
         console.error('Error creating admin user:', err);
@@ -111,14 +116,15 @@ function initializeDatabase() {
     });
 
     db.run(`
-      INSERT OR IGNORE INTO users (username, password, role, full_name, job_title) 
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
+      VALUES (?, ?, ?, ?, ?, ?)
     `, [
-      'teacher', 
+      'teacher@training.com', 
       bcrypt.hashSync('teacher123', 10), 
       'teacher', 
       'Training Manager', 
-      'Manager'
+      'Manager',
+      'Training Department'
     ], (err) => {
       if (err) {
         console.error('Error creating teacher user:', err);
@@ -128,14 +134,15 @@ function initializeDatabase() {
     });
 
     db.run(`
-      INSERT OR IGNORE INTO users (username, password, role, full_name, job_title) 
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
+      VALUES (?, ?, ?, ?, ?, ?)
     `, [
-      'student', 
+      'student@training.com', 
       bcrypt.hashSync('student123', 10), 
       'student', 
       'John Doe', 
-      'Trainee'
+      'Trainee',
+      'Manufacturing'
     ], (err) => {
       if (err) {
         console.error('Error creating student user:', err);
