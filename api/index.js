@@ -337,12 +337,16 @@ async function handleGetStudents(req, res) {
 
 // Create new student
 async function handleCreateStudent(req, res) {
+  console.log('Create student request method:', req.method);
+  console.log('Create student request body:', req.body);
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { username, password, full_name, job_title } = req.body;
+    console.log('Student data:', { username, full_name, job_title });
     const db = getDatabase();
     
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -741,7 +745,13 @@ module.exports = async function handler(req, res) {
       
       case 'students':
         console.log('Handling students request');
-        return await handleGetStudents(req, res);
+        if (req.method === 'GET') {
+          return await handleGetStudents(req, res);
+        } else if (req.method === 'POST') {
+          return await handleCreateStudent(req, res);
+        } else {
+          return res.status(405).json({ error: 'Method not allowed' });
+        }
       
       case 'student':
         console.log('Handling student creation request');
