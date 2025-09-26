@@ -155,7 +155,7 @@ function initializeDatabase() {
     `, [
       'admin@training.com', 
       bcrypt.hashSync('admin123', 10), 
-      'teacher', 
+      'admin', 
       'System Administrator', 
       'TCO',
       'IT Department'

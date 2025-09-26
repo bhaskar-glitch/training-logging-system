@@ -173,6 +173,7 @@ function showLoginScreen() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('teacherDashboard').classList.add('hidden');
     document.getElementById('studentDashboard').classList.add('hidden');
+    document.getElementById('adminDashboard').classList.add('hidden');
     hideMessage('loginError');
 }
 
@@ -1108,12 +1109,16 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const data = await login(email, password);
             console.log('Login successful:', data);
+            console.log('User role:', data.user.role);
             
             if (data.user.role === 'admin') {
+                console.log('Showing admin dashboard');
                 showAdminDashboard();
             } else if (data.user.role === 'teacher') {
+                console.log('Showing teacher dashboard');
                 showTeacherDashboard();
             } else {
+                console.log('Showing student dashboard');
                 showStudentDashboard();
             }
         } catch (error) {
