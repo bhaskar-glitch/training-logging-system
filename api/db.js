@@ -25,13 +25,13 @@ function initializeDatabase() {
   
   // Create tables with proper error handling
   db.serialize(() => {
-    // Create users table
+    // First create all tables
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('teacher', 'student')),
+        role TEXT NOT NULL CHECK(role IN ('teacher', 'student', 'admin')),
         full_name TEXT NOT NULL,
         job_title TEXT,
         phone TEXT,
@@ -40,15 +40,8 @@ function initializeDatabase() {
         last_login DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating users table:', err);
-      } else {
-        console.log('Users table created successfully');
-      }
-    });
+    `);
 
-    // Create training_sessions table
     db.run(`
       CREATE TABLE IF NOT EXISTS training_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,15 +59,8 @@ function initializeDatabase() {
         duration_minutes INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating training_sessions table:', err);
-      } else {
-        console.log('Training sessions table created successfully');
-      }
-    });
+    `);
 
-    // Create attendance table
     db.run(`
       CREATE TABLE IF NOT EXISTS attendance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,15 +74,8 @@ function initializeDatabase() {
         FOREIGN KEY (session_id) REFERENCES training_sessions (id),
         FOREIGN KEY (student_id) REFERENCES users (id)
       )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating attendance table:', err);
-      } else {
-        console.log('Attendance table created successfully');
-      }
-    });
+    `);
 
-    // Create departments table
     db.run(`
       CREATE TABLE IF NOT EXISTS departments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,15 +84,8 @@ function initializeDatabase() {
         is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating departments table:', err);
-      } else {
-        console.log('Departments table created successfully');
-      }
-    });
+    `);
 
-    // Create job_titles table
     db.run(`
       CREATE TABLE IF NOT EXISTS job_titles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,15 +95,8 @@ function initializeDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (department_id) REFERENCES departments (id)
       )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating job_titles table:', err);
-      } else {
-        console.log('Job titles table created successfully');
-      }
-    });
+    `);
 
-    // Create training_types table
     db.run(`
       CREATE TABLE IF NOT EXISTS training_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,15 +105,9 @@ function initializeDatabase() {
         is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating training_types table:', err);
-      } else {
-        console.log('Training types table created successfully');
-      }
-    });
+    `);
 
-    // Insert default users after tables are created
+    // Then insert default data
     db.run(`
       INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
       VALUES (?, ?, ?, ?, ?, ?)
@@ -159,13 +118,7 @@ function initializeDatabase() {
       'System Administrator', 
       'TCO',
       'IT Department'
-    ], (err) => {
-      if (err) {
-        console.error('Error creating admin user:', err);
-      } else {
-        console.log('Admin user created successfully');
-      }
-    });
+    ]);
 
     db.run(`
       INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
@@ -177,13 +130,7 @@ function initializeDatabase() {
       'Training Manager', 
       'Manager',
       'Training Department'
-    ], (err) => {
-      if (err) {
-        console.error('Error creating teacher user:', err);
-      } else {
-        console.log('Teacher user created successfully');
-      }
-    });
+    ]);
 
     db.run(`
       INSERT OR IGNORE INTO users (email, password, role, full_name, job_title, department) 
@@ -195,13 +142,7 @@ function initializeDatabase() {
       'John Doe', 
       'Trainee',
       'Manufacturing'
-    ], (err) => {
-      if (err) {
-        console.error('Error creating student user:', err);
-      } else {
-        console.log('Student user created successfully');
-      }
-    });
+    ]);
 
     // Insert default departments
     const defaultDepartments = [
@@ -218,13 +159,7 @@ function initializeDatabase() {
       db.run(`
         INSERT OR IGNORE INTO departments (name, description) 
         VALUES (?, ?)
-      `, [name, description], (err) => {
-        if (err) {
-          console.error(`Error creating department ${name}:`, err);
-        } else {
-          console.log(`Department ${name} created successfully`);
-        }
-      });
+      `, [name, description]);
     });
 
     // Insert default job titles
@@ -250,13 +185,7 @@ function initializeDatabase() {
       db.run(`
         INSERT OR IGNORE INTO job_titles (title, department_id) 
         VALUES (?, ?)
-      `, [title, deptId], (err) => {
-        if (err) {
-          console.error(`Error creating job title ${title}:`, err);
-        } else {
-          console.log(`Job title ${title} created successfully`);
-        }
-      });
+      `, [title, deptId]);
     });
 
     // Insert default training types
@@ -273,20 +202,12 @@ function initializeDatabase() {
       db.run(`
         INSERT OR IGNORE INTO training_types (name, description) 
         VALUES (?, ?)
-      `, [name, description], (err) => {
-        if (err) {
-          console.error(`Error creating training type ${name}:`, err);
-        } else {
-          console.log(`Training type ${name} created successfully`);
-        }
-      });
+      `, [name, description]);
     });
 
-    // Mark initialization as complete
-    setTimeout(() => {
-      isInitialized = true;
-      console.log('Database initialization completed successfully');
-    }, 2000);
+    // Mark as initialized
+    isInitialized = true;
+    console.log('Database initialization completed successfully');
   });
 }
 
