@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 
 let db = null;
 let isInitialized = false;
+let initPromise = null;
 
 function getDatabase() {
   if (!db) {
@@ -13,18 +14,27 @@ function getDatabase() {
     console.log('Database connection created');
     
     // Initialize database tables and users
-    initializeDatabase();
+    if (!initPromise) {
+      initPromise = initializeDatabase();
+    }
   }
   return db;
 }
 
+async function waitForInitialization() {
+  if (initPromise) {
+    await initPromise;
+  }
+}
+
 function initializeDatabase() {
-  if (!db || isInitialized) return;
+  if (!db || isInitialized) return Promise.resolve();
   
   console.log('Starting database initialization...');
   
-  // Create tables with proper error handling
-  db.serialize(() => {
+  return new Promise((resolve, reject) => {
+    // Create tables with proper error handling
+    db.serialize(() => {
     // First create all tables
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
@@ -208,7 +218,52 @@ function initializeDatabase() {
     // Mark as initialized
     isInitialized = true;
     console.log('Database initialization completed successfully');
+    resolve();
+  });
   });
 }
 
-module.exports = { getDatabase };
+// Function to verify and fix database state
+async function verifyDatabaseState() {
+  const db = getDatabase();
+  await waitForInitialization();
+  
+  return new Promise((resolve, reject) => {
+    db.all('SELECT email, role FROM users ORDER BY id', (err, users) => {
+      if (err) {
+        console.error('Error verifying database state:', err);
+        reject(err);
+        return;
+      }
+      
+      console.log('Database state verification:');
+      users.forEach(user => {
+        console.log(`- ${user.email}: ${user.role}`);
+      });
+      
+      // Check if admin user exists
+      const adminUser = users.find(u => u.email === 'admin@training.com');
+      if (!adminUser) {
+        console.log('Admin user missing, recreating...');
+        db.run(`
+          INSERT INTO users (email, password, role, full_name, job_title, department) 
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [
+          'admin@training.com', 
+          bcrypt.hashSync('admin123', 10), 
+          'admin', 
+          'System Administrator', 
+          'TCO',
+          'IT Department'
+        ]);
+      } else if (adminUser.role !== 'admin') {
+        console.log('Admin user has wrong role, fixing...');
+        db.run('UPDATE users SET role = ? WHERE email = ?', ['admin', 'admin@training.com']);
+      }
+      
+      resolve(users);
+    });
+  });
+}
+
+module.exports = { getDatabase, waitForInitialization, verifyDatabaseState };

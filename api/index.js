@@ -1,4 +1,4 @@
-const { getDatabase } = require('./db');
+const { getDatabase, waitForInitialization, verifyDatabaseState } = require('./db');
 const { generateToken, authenticateToken } = require('./auth');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
@@ -47,21 +47,12 @@ async function handleLogin(req, res) {
     console.log('Database connection established');
 
     // Wait for database initialization to complete
-    const checkDatabase = () => {
-      return new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM users', (err, row) => {
-          if (err) {
-            console.log('Database not ready yet, retrying...');
-            setTimeout(checkDatabase, 100);
-            return;
-          }
-          console.log('Database ready, user count:', row.count);
-          resolve();
-        });
-      });
-    };
-
-    await checkDatabase();
+    await waitForInitialization();
+    console.log('Database initialization completed');
+    
+    // Verify and fix database state
+    await verifyDatabaseState();
+    console.log('Database state verified');
 
     db.get('SELECT * FROM users WHERE email = ? AND is_active = 1', [email.toLowerCase()], (err, user) => {
       if (err) {
@@ -70,10 +61,17 @@ async function handleLogin(req, res) {
       }
 
       console.log('User found:', user ? 'Yes' : 'No');
+      console.log('User details:', user ? { id: user.id, email: user.email, role: user.role } : 'None');
       
       if (!user) {
         console.log('Email not registered:', email);
         return res.status(401).json({ error: 'Email not registered. Please check your email or contact administrator.' });
+      }
+
+      // Validate role
+      if (!user.role || !['admin', 'teacher', 'student'].includes(user.role)) {
+        console.error('Invalid user role:', user.role);
+        return res.status(500).json({ error: 'Invalid user role. Please contact administrator.' });
       }
 
       const passwordMatch = bcrypt.compareSync(password, user.password);
@@ -92,7 +90,7 @@ async function handleLogin(req, res) {
         }
       });
 
-      console.log('Login successful for user:', user.email);
+      console.log('Login successful for user:', user.email, 'with role:', user.role);
       const token = generateToken({ id: user.id, email: user.email, role: user.role });
       res.json({ 
         token, 
@@ -728,6 +726,42 @@ function generateExcelFile(res, session, attendance) {
   }
 }
 
+// Debug endpoint to check database state
+async function handleDebugUsers(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = getDatabase();
+    await waitForInitialization();
+    
+    db.all('SELECT id, email, role, full_name, is_active FROM users ORDER BY id', (err, users) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      console.log('Debug - All users in database:');
+      users.forEach(user => {
+        console.log(`ID: ${user.id}, Email: ${user.email}, Role: ${user.role}, Name: ${user.full_name}, Active: ${user.is_active}`);
+      });
+      
+      res.json({ 
+        message: 'Database state retrieved',
+        users: users,
+        totalUsers: users.length,
+        adminUsers: users.filter(u => u.role === 'admin'),
+        teacherUsers: users.filter(u => u.role === 'teacher'),
+        studentUsers: users.filter(u => u.role === 'student')
+      });
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
 // Main handler
 module.exports = async function handler(req, res) {
   console.log('API Request:', req.method, req.url);
@@ -832,6 +866,10 @@ module.exports = async function handler(req, res) {
       case 'admin/students':
         console.log('Handling admin students request');
         return await handleAdminStudents(req, res);
+      
+      case 'debug/users':
+        console.log('Handling debug users request');
+        return await handleDebugUsers(req, res);
       
       default:
         console.log('Unknown endpoint:', path);
